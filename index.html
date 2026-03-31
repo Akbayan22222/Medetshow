@@ -1,46 +1,41 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Magic Event</title>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magic Event Client</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; background: #000; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; transition: background 0.1s; overflow: hidden; }
-        #status { font-size: 14px; opacity: 0.5; margin-bottom: 20px; }
-        button { padding: 20px 40px; font-size: 18px; border-radius: 50px; border: none; background: #e91e63; color: white; cursor: pointer; font-weight: bold; text-transform: uppercase; }
-        .active { background: #fff !important; }
+        body { margin: 0; background: #000; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; transition: background 0.2s; }
+        button { padding: 20px; font-size: 20px; background: #e91e63; color: white; border: none; border-radius: 10px; }
     </style>
 </head>
 <body>
-    <div id="status">Ожидание подключения...</div>
-    <button id="startBtn">Войти в Шоу</button>
+    <button id="connBtn">ПОДКЛЮЧИТЬСЯ К ШОУ</button>
+    <p id="statusText">Ожидание нажатия кнопки...</p>
 
     <script>
-        const status = document.getElementById('status');
-        const startBtn = document.getElementById('startBtn');
+        const connBtn = document.getElementById('connBtn');
+        const statusText = document.getElementById('statusText');
         
-        // ЗАМЕНИТЕ ЭТУ ССЫЛКУ на адрес вашего будущего сервера (Render/Railway)
-        const socket = io("https://ВАШ-СЕРВЕР.onrender.com");
+        // ВНИМАНИЕ: Здесь впишите ЛЮБОЕ уникальное имя, например 'my_magic_event_2026'
+        const ADMIN_ID = 'kazakhstan_event_master_777'; 
 
-        startBtn.onclick = () => {
-            // Активируем аудио контекст (нужно для iOS/Android)
-            startBtn.style.display = 'none';
-            status.innerText = 'Вы в игре! Не закрывайте экран.';
-            // Вибро-отклик для теста
-            if (navigator.vibrate) navigator.vibrate(100);
+        const peer = new Peer(); 
+
+        connBtn.onclick = () => {
+            const conn = peer.connect(ADMIN_ID);
+            connBtn.style.display = 'none';
+            statusText.innerText = "Связь установлена! Ждите сигнала.";
+
+            conn.on('data', (data) => {
+                if (data === 'FLASH') {
+                    document.body.style.backgroundColor = 'white';
+                    if (navigator.vibrate) navigator.vibrate(200);
+                    setTimeout(() => { document.body.style.backgroundColor = 'black'; }, 500);
+                }
+            });
         };
-
-        socket.on('connect', () => { status.innerText = 'Подключено. Ждите сигнала...'; });
-
-        // ГЛАВНАЯ МАГИЯ: Получаем команду ВСПЫШКА
-        socket.on('flash_trigger', () => {
-            document.body.style.backgroundColor = 'white';
-            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-            setTimeout(() => {
-                document.body.style.backgroundColor = 'black';
-            }, 500);
-        });
     </script>
 </body>
 </html>

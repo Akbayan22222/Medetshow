@@ -1,38 +1,79 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Magic Event Client</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Magic Show Client</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; background: #000; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; transition: background 0.2s; }
-        button { padding: 20px; font-size: 20px; background: #e91e63; color: white; border: none; border-radius: 10px; }
+        body { margin: 0; background: #000; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: 'Segoe UI', sans-serif; transition: background 0.1s; overflow: hidden; text-align: center; }
+        .container { padding: 20px; }
+        h1 { font-size: 24px; margin-bottom: 10px; }
+        p { font-size: 16px; opacity: 0.8; margin-bottom: 30px; }
+        #startBtn { padding: 20px 40px; font-size: 20px; border-radius: 50px; border: none; background: #ff0055; color: white; cursor: pointer; font-weight: bold; box-shadow: 0 0 20px rgba(255, 0, 85, 0.5); }
+        #status { margin-top: 20px; font-size: 14px; color: #00ffcc; display: none; }
     </style>
 </head>
 <body>
-    <button id="connBtn">ПОДКЛЮЧИТЬСЯ К ШОУ</button>
-    <p id="statusText">Ожидание нажатия кнопки...</p>
+
+    <div class="container" id="mainUI">
+        <h1>MAGIC EVENT SHOW</h1>
+        <p>Нажмите кнопку, чтобы стать частью светового перформанса</p>
+        <button id="startBtn">ВОЙТИ В ШОУ</button>
+        <div id="status">Подключение...</div>
+    </div>
 
     <script>
-        const connBtn = document.getElementById('connBtn');
-        const statusText = document.getElementById('statusText');
+        // ВАЖНО: Этот ID должен быть ТАКИМ ЖЕ, как в admin.html
+        const ADMIN_ID = 'medet_show_master_2026'; 
         
-        // ВНИМАНИЕ: Здесь впишите ЛЮБОЕ уникальное имя, например 'my_magic_event_2026'
-        const ADMIN_ID = 'kazakhstan_event_master_777'; 
+        const startBtn = document.getElementById('startBtn');
+        const status = document.getElementById('status');
+        const peer = new Peer();
+        let videoTrack = null;
 
-        const peer = new Peer(); 
+        startBtn.onclick = async () => {
+            startBtn.style.display = 'none';
+            status.style.display = 'block';
 
-        connBtn.onclick = () => {
+            try {
+                // Запрашиваем камеру для доступа к фонарику
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' } 
+                });
+                videoTrack = stream.getVideoTracks()[0];
+                status.innerText = "Доступ получен. Соединение...";
+            } catch (e) {
+                status.innerText = "Режим: Только экранная вспышка";
+            }
+
+            // Подключаемся к админу
             const conn = peer.connect(ADMIN_ID);
-            connBtn.style.display = 'none';
-            statusText.innerText = "Связь установлена! Ждите сигнала.";
 
-            conn.on('data', (data) => {
+            conn.on('open', () => {
+                status.innerText = "ВЫ В ИГРЕ! Не закрывайте страницу.";
+                if (navigator.vibrate) navigator.vibrate(100);
+            });
+
+            conn.on('data', async (data) => {
                 if (data === 'FLASH') {
+                    // 1. Пытаемся зажечь реальный фонарик (Android)
+                    if (videoTrack) {
+                        try {
+                            await videoTrack.applyConstraints({ advanced: [{ torch: true }] });
+                            setTimeout(() => {
+                                videoTrack.applyConstraints({ advanced: [{ torch: false }] });
+                            }, 500);
+                        } catch (err) { console.log("Фонарик не поддерживается"); }
+                    }
+
+                    // 2. Вспышка экраном (Для всех, особенно iPhone)
                     document.body.style.backgroundColor = 'white';
-                    if (navigator.vibrate) navigator.vibrate(200);
-                    setTimeout(() => { document.body.style.backgroundColor = 'black'; }, 500);
+                    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                    
+                    setTimeout(() => {
+                        document.body.style.backgroundColor = 'black';
+                    }, 500);
                 }
             });
         };

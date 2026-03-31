@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>LED SCREEN SHOW</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            background: #000; 
+            color: #fff; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            overflow: hidden;
+            font-family: 'Arial Black', sans-serif;
+            transition: background 0.1s;
+        }
+        #text {
+            font-size: 8vw; /* Текст будет подстраиваться под размер экрана */
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            opacity: 0;
+            transition: opacity 0.1s, transform 0.1s;
+            transform: scale(0.8);
+        }
+        /* Эффект вспышки для текста */
+        .show-text {
+            opacity: 1 !important;
+            transform: scale(1) !important;
+            text-shadow: 0 0 50px rgba(255,255,255,0.8);
+        }
+        .flash-bg {
+            background: #fff !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="text">MEDET MUHAMEDZHANOV SHOW</div>
+
+    <script>
+        const ADMIN_ID = 'medet_show_master_2026'; // Должен быть такой же, как в админке
+        const peer = new Peer();
+        const textElement = document.getElementById('text');
+
+        // Подключаемся к админке как "зритель"
+        const conn = peer.connect(ADMIN_ID);
+
+        conn.on('open', () => {
+            console.log("Экран подключен к пульту!");
+        });
+
+        conn.on('data', (data) => {
+            if (data === 'FLASH') {
+                // Вспышка фоном
+                document.body.classList.add('flash-bg');
+                // Появление текста
+                textElement.classList.add('show-text');
+
+                setTimeout(() => {
+                    document.body.classList.remove('flash-bg');
+                    textElement.classList.remove('show-text');
+                }, 600); // Длительность вспышки на экране
+            }
+        });
+    </script>
+</body>
+</html>

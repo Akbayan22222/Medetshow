@@ -1,34 +1,56 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin Panel (P2P)</title>
+    <meta charset="UTF-8">
+    <title>Admin Control Panel</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        button { width: 100%; height: 150px; font-size: 40px; background: green; color: white; }
+        body { font-family: sans-serif; background: #1a1a1a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .panel { background: #2a2a2a; padding: 40px; border-radius: 20px; text-align: center; width: 80%; max-width: 500px; }
+        #count { font-size: 48px; color: #00ffcc; margin: 20px 0; }
+        button { width: 100%; height: 120px; font-size: 30px; border-radius: 15px; border: none; background: #007bff; color: white; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:active { transform: scale(0.95); background: #0056b3; }
+        #id-display { font-size: 12px; opacity: 0.5; margin-top: 20px; }
     </style>
 </head>
 <body>
-    <h1>Пульт управления</h1>
-    <p id="my-id">Инициализация...</p>
-    <button onclick="broadcast('FLASH')">ВСПЫШКА!</button>
+
+    <div class="panel">
+        <h2>УПРАВЛЕНИЕ ЗАЛОМ</h2>
+        <div id="count">0</div>
+        <p>Гостей подключено</p>
+        <button onclick="sendFlash()">🔥 ЗАЖЕЧЬ ЗАЛ 🔥</button>
+        <div id="id-display">Ваш ID: <span id="my-id">...</span></div>
+    </div>
 
     <script>
-        // Тот же ID, что и у клиентов
-        const ADMIN_ID = 'kazakhstan_event_master_777';
+        const ADMIN_ID = 'medet_show_master_2026';
         const peer = new Peer(ADMIN_ID);
-        const connections = [];
+        let connections = [];
+        const countDisplay = document.getElementById('count');
 
         peer.on('open', (id) => {
-            document.getElementById('my-id').innerText = "Ваш пульт готов! ID: " + id;
+            document.getElementById('my-id').innerText = id;
+            console.log('Админ панель готова');
         });
 
         peer.on('connection', (conn) => {
             connections.push(conn);
-            console.log("Новый гость подключился!");
+            countDisplay.innerText = connections.length;
+
+            conn.on('close', () => {
+                connections = connections.filter(c => c !== conn);
+                countDisplay.innerText = connections.length;
+            });
         });
 
-        function broadcast(msg) {
-            connections.forEach(conn => conn.send(msg));
+        function sendFlash() {
+            console.log("Отправка вспышки...");
+            connections.forEach(conn => {
+                if (conn.open) {
+                    conn.send('FLASH');
+                }
+            });
         }
     </script>
 </body>

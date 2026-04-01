@@ -1,23 +1,104 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>MEDET SHOW FLASH</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Magic Show Client</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { margin: 0; background: #000; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: 'Segoe UI', sans-serif; transition: background 0.1s; overflow: hidden; text-align: center; }
+        
+        /* Стили для фото ведущего */
+        .photo-container {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            border: 4px solid #ff0055;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 0 25px rgba(255, 0, 85, 0.6);
+            display: inline-block;
+        }
+        .photo-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Чтобы фото не растягивалось */
+        }
+
+        .container { padding: 20px; }
+        h1 { font-size: 24px; margin: 10px 0; letter-spacing: 2px; }
+        p { font-size: 15px; opacity: 0.8; margin-bottom: 25px; line-height: 1.4; }
+        
+        #startBtn { 
+            padding: 18px 35px; 
+            font-size: 18px; 
+            border-radius: 50px; 
+            border: none; 
+            background: #ff0055; 
+            color: white; 
+            cursor: pointer; 
+            font-weight: bold; 
+            text-transform: uppercase;
+            box-shadow: 0 0 20px rgba(255, 0, 85, 0.4); 
+        }
+        
+        #status { margin-top: 20px; font-size: 14px; color: #00ffcc; display: none; font-weight: bold; }
+    </style>
 </head>
-<body style="background: #000; text-align: center; color: white;">
-    <h1 style="margin-top: 100px;">MEDET SHOW</h1>
-    <button onclick="guestFlash()" style="width: 250px; height: 250px; border-radius: 50%; background: white; color: black; font-size: 24px; font-weight: bold; border: 10px solid gold;">
-        ҚОСЫЛУ
-    </button>
+<body>
+
+    <div class="container" id="mainUI">
+        <div class="photo-container">
+            <img src="medet_photo.png" alt="Medet Muhamedzhanov">
+        </div>
+
+        <h1>MAGIC EVENT SHOW</h1>
+        <p>Нажмите кнопку, чтобы стать частью<br>светового перформанса</p>
+        
+        <button id="startBtn">ВОЙТИ В ШОУ</button>
+        <div id="status">Подключение...</div>
+    </div>
 
     <script>
+        const ADMIN_ID = 'medet_show_master_2026'; 
+        const startBtn = document.getElementById('startBtn');
+        const status = document.getElementById('status');
         const peer = new Peer();
-        function guestFlash() {
-            const conn = peer.connect('medet-flash-hub-2026');
+        let videoTrack = null;
+
+        startBtn.onclick = async () => {
+            startBtn.style.display = 'none';
+            status.style.display = 'block';
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                videoTrack = stream.getVideoTracks()[0];
+                status.innerText = "Доступ получен. Соединение...";
+            } catch (e) {
+                status.innerText = "Режим: Экранная вспышка";
+            }
+
+            const conn = peer.connect(ADMIN_ID);
+
             conn.on('open', () => {
-                conn.send('FLASH');
+                status.innerText = "ВЫ В ИГРЕ! Не закрывайте экран.";
+                if (navigator.vibrate) navigator.vibrate(100);
             });
-        }
+
+            conn.on('data', async (data) => {
+                if (data === 'FLASH') {
+                    if (videoTrack) {
+                        try {
+                            await videoTrack.applyConstraints({ advanced: [{ torch: true }] });
+                            setTimeout(() => { videoTrack.applyConstraints({ advanced: [{ torch: false }] }); }, 500);
+                        } catch (err) {}
+                    }
+                    document.body.style.backgroundColor = 'white';
+                    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                    setTimeout(() => { document.body.style.backgroundColor = 'black'; }, 500);
+                }
+            });
+        };
     </script>
 </body>
 </html>

@@ -1,56 +1,107 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zhanat Muhamedzhanov Show</title>
+    <title>ZHANAT SHOW - ADMIN</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; background: #000; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; text-align: center; }
-        .photo-container { width: 180px; height: 180px; border-radius: 50%; border: 4px solid #ffcc00; overflow: hidden; margin-bottom: 20px; box-shadow: 0 0 30px rgba(255, 204, 0, 0.4); }
-        .photo-container img { width: 100%; height: 100%; object-fit: cover; }
-        h1 { color: #ffcc00; letter-spacing: 2px; text-transform: uppercase; }
-        #startBtn { padding: 20px 40px; font-size: 18px; border-radius: 50px; border: none; background: #ffcc00; color: black; font-weight: bold; cursor: pointer; }
-        #status { margin-top: 20px; color: #00ffcc; display: none; }
+        body { font-family: sans-serif; background: #000; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        .panel { background: #111; padding: 40px; border-radius: 30px; text-align: center; width: 85%; max-width: 500px; box-shadow: 0 0 40px rgba(255, 215, 0, 0.2); border: 2px solid gold; }
+        #count { font-size: 80px; color: gold; margin: 10px 0; font-weight: bold; text-shadow: 0 0 20px gold; }
+        button { width: 100%; height: 120px; font-size: 28px; border-radius: 25px; border: none; cursor: pointer; font-weight: bold; margin-bottom: 20px; transition: 0.2s; }
+        .btn-flash { background: gold; color: black; box-shadow: 0 8px 20px rgba(255, 215, 0, 0.3); }
+        .btn-beat { background: #333; color: #999; height: 80px; font-size: 18px; border: 1px solid #555; }
+        .active-beat { background: #28a745; color: white; border-color: #00ffcc; animation: pulse 1s infinite; box-shadow: 0 0 25px #28a745; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        #status { color: gold; font-size: 16px; margin-bottom: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="photo-container"><img src="zhanat.png" alt="Zhanat"></div>
-    <h1>ZHANAT EVENT SHOW</h1>
-    <p>Нажмите кнопку для участия в шоу</p>
-    <button id="startBtn">ВОЙТИ В ШОУ</button>
-    <div id="status">Подключение...</div>
+    <div class="panel">
+        <h2 style="margin: 0; color: white; letter-spacing: 2px;">ZHANAT SHOW</h2>
+        <div id="status">ПОДКЛЮЧЕНИЕ...</div>
+        <div id="count">0</div>
+        <p>Устройств в сети</p>
+        
+        <button class="btn-flash" onclick="sendFlash()">🔥 ЗАЖЕЧЬ ЗАЛ 🔥</button>
+        <button id="beatBtn" class="btn-beat" onclick="toggleMusicMode()">ВКЛЮЧИТЬ АВТО-БИТ</button>
+    </div>
 
     <script>
-        const ADMIN_ID = 'zhanat_master_2026'; // Уникальный ID для Жаната
-        const peer = new Peer();
-        let videoTrack = null;
+        // Бұл ID-ді қонақтардың бетіндегі (index.html) ADMIN_ID-мен бірдей қыл
+        const ADMIN_ID = 'zhanat_master_2026';
+        const peer = new Peer(ADMIN_ID);
+        let connections = [];
+        let isBeatMode = false;
+        let audioContext, analyser, dataArray;
 
-        document.getElementById('startBtn').onclick = async () => {
-            document.getElementById('startBtn').style.display = 'none';
-            document.getElementById('status').style.display = 'block';
+        peer.on('open', () => {
+            document.getElementById('status').innerText = "ПАНЕЛЬ ЖАНАТА ГОТОВА ✅";
+        });
+
+        peer.on('connection', (conn) => {
+            connections.push(conn);
+            updateCount();
+            conn.on('close', () => {
+                connections = connections.filter(c => c !== conn);
+                updateCount();
+            });
+        });
+
+        function updateCount() {
+            document.getElementById('count').innerText = connections.length;
+        }
+
+        function sendFlash() {
+            connections.forEach(conn => { if (conn.open) conn.send('FLASH'); });
+        }
+
+        async function toggleMusicMode() {
+            if (isBeatMode) {
+                isBeatMode = false;
+                document.getElementById('beatBtn').classList.remove('active-beat');
+                document.getElementById('beatBtn').innerText = "ВКЛЮЧИТЬ АВТО-БИТ";
+                return;
+            }
 
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: true });
-                videoTrack = stream.getVideoTracks()[0];
-                stream.getAudioTracks()[0].stop();
-            } catch (e) { console.log("Фонарик недоступен"); }
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                const source = audioContext.createMediaStreamSource(stream);
+                source.connect(analyser);
+                analyser.fftSize = 256; 
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                
+                isBeatMode = true;
+                document.getElementById('beatBtn').classList.add('active-beat');
+                document.getElementById('beatBtn').innerText = "СЛУШАЮ МУЗЫКУ...";
+                detectBeat();
+            } catch (err) { alert("Микрофонға рұқсат беріңіз!"); }
+        }
 
-            const conn = peer.connect(ADMIN_ID);
-            conn.on('open', () => { document.getElementById('status').innerText = "ВЫ В ИГРЕ!"; });
-            conn.on('data', async (data) => {
-                if (data === 'FLASH') {
-                    if (videoTrack) {
-                        try {
-                            await videoTrack.applyConstraints({ advanced: [{ torch: true }] });
-                            setTimeout(() => videoTrack.applyConstraints({ advanced: [{ torch: false }] }), 150);
-                        } catch (e) {}
-                    }
-                    document.body.style.backgroundColor = 'white';
-                    setTimeout(() => document.body.style.backgroundColor = 'black', 150);
-                }
-            });
-        };
+        function detectBeat() {
+            if (!isBeatMode) return;
+            analyser.getByteFrequencyData(dataArray);
+            
+            // СЕНІҢ ЕСКІ КОДТАҒЫ ЛОГИКАҢ:
+            let sum = 0;
+            for (let i = 0; i < 4; i++) sum += dataArray[i];  
+            let avg = sum / 4;
+
+            // Сезімталдық 165 - сен айтқан ең жақсы мән
+            if (avg > 165) { 
+                sendFlash();
+                setTimeout(detectBeat, 150); // 150ms кідіріс
+            } else {
+                requestAnimationFrame(detectBeat);
+            }
+        }
+
+        // Android үшін байланысты үзбеу (Keep-alive)
+        setInterval(() => {
+            connections.forEach(conn => { if (conn.open) conn.send('PING'); });
+        }, 4000);
     </script>
 </body>
 </html>

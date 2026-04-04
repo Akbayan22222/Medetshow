@@ -2,60 +2,46 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>ZHANAT - ADMIN CONTROL</title>
+    <title>ZHANAT SHOW - ADMIN</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
-        .panel { background: #2a2a2a; padding: 30px; border-radius: 25px; text-align: center; width: 85%; max-width: 450px; box-shadow: 0 0 30px rgba(0,0,0,0.5); border: 2px solid #ff0055; }
-        #count { font-size: 70px; color: #00ffcc; margin: 10px 0; font-weight: bold; text-shadow: 0 0 15px #00ffcc; }
-        button { width: 100%; height: 100px; font-size: 24px; border-radius: 20px; border: none; cursor: pointer; font-weight: bold; margin-bottom: 20px; transition: 0.2s; }
-        .btn-flash { background: #ff0055; color: white; box-shadow: 0 8px 15px rgba(255, 0, 85, 0.3); }
-        .btn-beat { background: #444; color: #bbb; height: 80px; font-size: 18px; border: 2px solid #666; }
-        .active-beat { background: #28a745; color: white; border-color: #00ffcc; animation: pulse 0.8s infinite; box-shadow: 0 0 20px #28a745; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
-        #status { color: gold; font-size: 14px; margin-bottom: 10px; }
+        body { font-family: sans-serif; background: #1a1a1a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .panel { background: #222; padding: 40px; border-radius: 30px; text-align: center; width: 85%; max-width: 500px; border: 2px solid gold; }
+        #count { font-size: 80px; color: gold; margin: 10px 0; font-weight: bold; }
+        button { width: 100%; height: 110px; font-size: 26px; border-radius: 20px; border: none; cursor: pointer; font-weight: bold; margin-bottom: 20px; }
+        .btn-flash { background: gold; color: black; }
+        .btn-beat { background: #444; color: #ccc; height: 70px; font-size: 18px; }
+        .active-beat { background: #28a745; color: white; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
     <div class="panel">
-        <h2 style="margin: 0;">ZHANAT</h2>
-        <div id="status">ОЖИДАНИЕ ПОДКЛЮЧЕНИЯ...</div>
+        <h2 style="margin:0">ZHANAT SHOW ADMIN</h2>
         <div id="count">0</div>
         <p>Устройств в сети</p>
-        
         <button class="btn-flash" onclick="sendFlash()">🔥 ЗАЖЕЧЬ ЗАЛ 🔥</button>
         <button id="beatBtn" class="btn-beat" onclick="toggleMusicMode()">ВКЛЮЧИТЬ АВТО-БИТ</button>
     </div>
 
     <script>
-        const ADMIN_ID = 'zhanat_master_2026';
+        const ADMIN_ID = 'zhanat_show_2026';
         const peer = new Peer(ADMIN_ID);
         let connections = [];
         let isBeatMode = false;
         let audioContext, analyser, dataArray;
-        let lastBeatTime = 0;
-
-        peer.on('open', () => {
-            document.getElementById('status').innerText = "ПАНЕЛЬ ГОТОВА ✅";
-        });
 
         peer.on('connection', (conn) => {
             connections.push(conn);
-            updateCount();
+            document.getElementById('count').innerText = connections.length;
             conn.on('close', () => {
                 connections = connections.filter(c => c !== conn);
-                updateCount();
+                document.getElementById('count').innerText = connections.length;
             });
         });
 
-        function updateCount() {
-            document.getElementById('count').innerText = connections.length;
-        }
-
         function sendFlash() {
-            connections.forEach(conn => { 
-                if (conn.open) conn.send('FLASH'); 
-            });
+            connections.forEach(conn => { if (conn.open) conn.send('FLASH'); });
         }
 
         async function toggleMusicMode() {
@@ -63,60 +49,43 @@
                 isBeatMode = false;
                 document.getElementById('beatBtn').classList.remove('active-beat');
                 document.getElementById('beatBtn').innerText = "ВКЛЮЧИТЬ АВТО-БИТ";
-                if (audioContext) audioContext.close();
                 return;
             }
-
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser();
                 const source = audioContext.createMediaStreamSource(stream);
                 source.connect(analyser);
-                
-                analyser.fftSize = 128; // Тезірек өңдеу үшін кішірейттік
+                analyser.fftSize = 256;
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
-                
                 isBeatMode = true;
                 document.getElementById('beatBtn').classList.add('active-beat');
-                document.getElementById('beatBtn').innerText = "СЛУШАЮ БИТ...";
+                document.getElementById('beatBtn').innerText = "СЛУШАЮ МУЗЫКУ...";
                 detectBeat();
-            } catch (err) { 
-                alert("Ошибка: Разрешите доступ к микрофону!"); 
-            }
+            } catch (err) { alert("Разрешите микрофон!"); }
         }
 
         function detectBeat() {
             if (!isBeatMode) return;
-            
             analyser.getByteFrequencyData(dataArray);
-            
-            // Төменгі жиіліктерді (бас) тексеру
-            let lowFreqSum = 0;
-            for (let i = 0; i < 3; i++) lowFreqSum += dataArray[i];
-            let avg = lowFreqSum / 3;
+            let sum = 0;
+            for (let i = 0; i < 4; i++) sum += dataArray[i]; 
+            let avg = sum / 4;
 
-            // СЕЗІМТАЛДЫҚ: 140-тан асса бит деп есептейді
-            let now = Date.now();
-            if (avg > 140 && (now - lastBeatTime > 250)) { 
+            // СЕНІҢ ЕҢ ЖАҚСЫ ЖҰМЫС ІСТЕЙТІН СЕЗІМТАЛДЫҒЫҢ (165)
+            if (avg > 165) { 
                 sendFlash();
-                lastBeatTime = now;
+                setTimeout(detectBeat, 150); 
+            } else {
+                requestAnimationFrame(detectBeat);
             }
-            
-            requestAnimationFrame(detectBeat);
         }
-
-        // ANDROID ҮШІН: Байланысты сақтау (Keep-alive)
+        
+        // Android-та байланысты сақтау
         setInterval(() => {
-            connections.forEach(conn => { 
-                if (conn.open) conn.send('PING'); 
-            });
+            connections.forEach(conn => { if (conn.open) conn.send('PING'); });
         }, 3000);
-
-        // Android-та браузер ұйықтап қалмауы үшін (Wake Lock қолдау көрсетсе)
-        if ('wakeLock' in navigator) {
-            navigator.wakeLock.request('screen').catch(() => {});
-        }
     </script>
 </body>
 </html>

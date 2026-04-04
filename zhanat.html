@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Zhanat Muhamedzhanov Show</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { margin: 0; background: #000; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; text-align: center; }
+        .photo-container { width: 180px; height: 180px; border-radius: 50%; border: 4px solid #ffcc00; overflow: hidden; margin-bottom: 20px; box-shadow: 0 0 30px rgba(255, 204, 0, 0.4); }
+        .photo-container img { width: 100%; height: 100%; object-fit: cover; }
+        h1 { color: #ffcc00; letter-spacing: 2px; text-transform: uppercase; }
+        #startBtn { padding: 20px 40px; font-size: 18px; border-radius: 50px; border: none; background: #ffcc00; color: black; font-weight: bold; cursor: pointer; }
+        #status { margin-top: 20px; color: #00ffcc; display: none; }
+    </style>
+</head>
+<body>
+    <div class="photo-container"><img src="zhanat.png" alt="Zhanat"></div>
+    <h1>ZHANAT EVENT SHOW</h1>
+    <p>Нажмите кнопку для участия в шоу</p>
+    <button id="startBtn">ВОЙТИ В ШОУ</button>
+    <div id="status">Подключение...</div>
+
+    <script>
+        const ADMIN_ID = 'zhanat_master_2026'; // Уникальный ID для Жаната
+        const peer = new Peer();
+        let videoTrack = null;
+
+        document.getElementById('startBtn').onclick = async () => {
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('status').style.display = 'block';
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: true });
+                videoTrack = stream.getVideoTracks()[0];
+                stream.getAudioTracks()[0].stop();
+            } catch (e) { console.log("Фонарик недоступен"); }
+
+            const conn = peer.connect(ADMIN_ID);
+            conn.on('open', () => { document.getElementById('status').innerText = "ВЫ В ИГРЕ!"; });
+            conn.on('data', async (data) => {
+                if (data === 'FLASH') {
+                    if (videoTrack) {
+                        try {
+                            await videoTrack.applyConstraints({ advanced: [{ torch: true }] });
+                            setTimeout(() => videoTrack.applyConstraints({ advanced: [{ torch: false }] }), 150);
+                        } catch (e) {}
+                    }
+                    document.body.style.backgroundColor = 'white';
+                    setTimeout(() => document.body.style.backgroundColor = 'black', 150);
+                }
+            });
+        };
+    </script>
+</body>
+</html>

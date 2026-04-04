@@ -6,28 +6,56 @@
     <title>ZHANAT SHOW - GUEST</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .status-dot { width: 15px; height: 15px; background: red; border-radius: 50%; margin: 10px auto; }
+        body { 
+            background: #000; 
+            color: #fff; 
+            font-family: sans-serif; 
+            text-align: center; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
+        
+        /* Жанаттың фотосы қонақтардың бетінде */
+        .zhanat-img {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid gold;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+            margin-bottom: 20px;
+        }
+
+        .status-dot { width: 15px; height: 15px; background: red; border-radius: 50%; margin: 10px auto; transition: 0.3s; }
         .online { background: #00ffcc; box-shadow: 0 0 10px #00ffcc; }
-        h2 { color: gold; letter-spacing: 2px; }
+        h2 { color: gold; letter-spacing: 2px; margin: 0; }
+        #info { font-weight: bold; opacity: 0.8; }
     </style>
 </head>
 <body>
     <div id="main-ui">
         <h2>ZHANAT SHOW</h2>
+        
+        <img src="zhanat.png" alt="Zhanat" class="zhanat-img">
+        
         <div id="dot" class="status-dot"></div>
         <p id="info">ПОДКЛЮЧЕНИЕ К ЖАНАТУ...</p>
     </div>
 
     <script>
-        const ADMIN_ID = 'zhanat_show_2026';
+        // МАҢЫЗДЫ: Бұл ID Жанаттың zhanat.html файлындағы ID-мен бірдей болуы керек
+        const ADMIN_ID = 'zhanat_show_master_2026';
         const peer = new Peer();
         let track = null;
 
-        // Камераға рұқсат алу (Фонарь үшін)
+        // Фонарьға рұқсат алу
         navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
             .then(stream => { track = stream.getVideoTracks()[0]; })
-            .catch(() => { alert("Рұқсат беріңіз (Разрешите камеру для фонарика)"); });
+            .catch(() => { console.log("Камераға рұқсат берілмеді."); });
 
         peer.on('open', () => {
             const conn = peer.connect(ADMIN_ID);
@@ -40,18 +68,26 @@
                     if (data === 'FLASH') toggleFlash();
                 });
             });
+
+            conn.on('close', () => {
+                document.getElementById('dot').classList.remove('online');
+                document.getElementById('info').innerText = "СВЯЗЬ ПОТЕРЯНА. ПЕРЕПОДКЛЮЧЕНИЕ...";
+            });
         });
 
         function toggleFlash() {
             if (!track) return;
-            track.applyConstraints({ advanced: [{ torch: true }] });
+            // Фонарьды жылдам қосып-өшіру
+            track.applyConstraints({ advanced: [{ torch: true }] }).catch(() => {});
             setTimeout(() => {
-                track.applyConstraints({ advanced: [{ torch: false }] });
+                track.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
             }, 100);
         }
 
-        // Android-та ұйықтап қалмау үшін
-        setInterval(() => { if(peer.disconnected) peer.reconnect(); }, 5000);
+        // Байланысты тексеріп тұру
+        setInterval(() => { 
+            if(peer.disconnected) peer.reconnect(); 
+        }, 5000);
     </script>
 </body>
 </html>
